@@ -64,7 +64,14 @@ public class V1ScannerDialog extends DialogFragment implements BTScanListener, B
         mScanner.setScanCallback(this);
 
         // If LE is supported default to that,
-        mScanType = BTUtil.isLESupported(getContext()) ? ConnectionType.LE : ConnectionType.SPP;
+
+        if (true)
+        {
+            mScanType = ConnectionType.Theia_BLE;
+        }
+        else {
+            mScanType = BTUtil.isLESupported(getContext()) ? ConnectionType.LE : ConnectionType.SPP;
+        }
     }
 
     @NonNull
@@ -87,11 +94,21 @@ public class V1ScannerDialog extends DialogFragment implements BTScanListener, B
         close.setOnClickListener(v1 -> getDialog().cancel());
 
         RadioGroup radioGroup = v.findViewById(R.id.radioGroup);
-        radioGroup.check((mScanType == ConnectionType.LE) ? R.id.le : R.id.spp);
+        if (mScanType == ConnectionType.Theia_BLE) {
+            radioGroup.check(R.id.theia);
+        }
+        else if (mScanType == ConnectionType.LE) {
+            radioGroup.check(R.id.le);
+        }
+        else {
+            radioGroup.check(R.id.spp);
+        }
 
         // This check will disable the LE option if it isn't supported
         if(!BTUtil.isLESupported(getContext())) {
             RadioButton lEoption = v.findViewById(R.id.le);
+            lEoption.setEnabled(false);
+            RadioButton theiaoption = v.findViewById(R.id.theia);
             lEoption.setEnabled(false);
         }
 

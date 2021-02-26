@@ -123,6 +123,10 @@ public class BluetoothScanner extends BroadcastReceiver implements IScanner {
             mContext.registerReceiver(this, filter);
             mBTAdptr.startDiscovery();
         }
+        else if (type == ConnectionType.Theia_BLE)
+        {
+
+        }
         else {
             BluetoothLeScanner scanner = mBTAdptr.getBluetoothLeScanner();
             if (scanner == null) {

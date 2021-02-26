@@ -27,6 +27,14 @@
             android:layout_marginLeft="5dp"
             android:checked="true"
             android:text="LE"/>
+
+        <RadioButton
+            android:id="@+id/theia"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="5dp"
+            android:checked="true"
+            android:text="Theia" />
     </RadioGroup>
 
     <ProgressBar
