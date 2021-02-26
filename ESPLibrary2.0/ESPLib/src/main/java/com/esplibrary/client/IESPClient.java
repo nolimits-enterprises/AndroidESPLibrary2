@@ -88,6 +88,9 @@ public interface IESPClient {
             case SPP:
                 client = new ESPValentineClient(appContext, new V1connectionWrapper(listener, factory, dataTimeout));
                 break;
+            case Theia_BLE:
+                client = new ESPTheiaClient(appContext, new V1connectionLEWrapper(listener, factory, dataTimeout));
+                break;
             default: // DEMO
                 client = new ESPValentineClient(appContext, new V1connectionDemoWrapper(listener, factory, dataTimeout));
                 break;

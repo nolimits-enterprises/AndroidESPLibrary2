@@ -21,6 +21,7 @@ public enum ConnectionType {
     /**
      * Invalid connection
      */
+    Theia_BLE("Theia BLE"),
     Invalid ("Invalid Connection Type");
 
     public final String value;
