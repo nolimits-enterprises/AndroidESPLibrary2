@@ -46,6 +46,7 @@ public class BluetoothScanner extends BroadcastReceiver implements IScanner {
     private int mScanMode;
     private BluetoothAdapter mBTAdptr;
     private V1cLEScanCallback mLEScanCB;
+    private V1cTheiaScanCallback mTheiaScanCB;
     private String mFindAddy;
 
     public BluetoothScanner(Context ctx) {
@@ -125,7 +126,25 @@ public class BluetoothScanner extends BroadcastReceiver implements IScanner {
         }
         else if (type == ConnectionType.Theia_BLE)
         {
-
+            BluetoothLeScanner scanner = mBTAdptr.getBluetoothLeScanner();
+            if (scanner == null) {
+                return false;
+            }
+            Builder scanSettingsBuilder = new Builder();
+            // If we are running on the apis that supports MatchMode use MATCH_MODE_AGGRESSIVE.
+            if (VERSION_CODES.M <= VERSION.SDK_INT) {
+                scanSettingsBuilder.setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES);
+                scanSettingsBuilder.setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE);
+            }
+            scanSettingsBuilder.setScanMode(mScanMode);
+            List<ScanFilter> filters = new ArrayList<>(1);
+            // Creates a scanFilter Builder for the Theia LE UUID.
+            ScanFilter.Builder filterBuilder = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(BTUtil.THEIA_UUID));
+            filters.add(filterBuilder.build());
+            if (mTheiaScanCB == null) {
+                mTheiaScanCB = new V1cTheiaScanCallback();
+            }
+            scanner.startScan(filters, scanSettingsBuilder.build(), mTheiaScanCB);
         }
         else {
             BluetoothLeScanner scanner = mBTAdptr.getBluetoothLeScanner();
@@ -255,6 +274,41 @@ public class BluetoothScanner extends BroadcastReceiver implements IScanner {
         synchronized (this) {
             if(mListener != null) {
                 mListener.onScanCompleted(this);
+            }
+        }
+    }
+
+    /**
+     * Theia scan callback to be used for Android API v.21 and above.
+     *
+     */
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private class V1cTheiaScanCallback extends ScanCallback {
+
+        /**
+         * Callback when a BLE advertisement has been found.
+         *
+         * @param callbackType Determines how this callback was triggered. Could be one of
+         *                     {@link android.bluetooth.le.ScanSettings#CALLBACK_TYPE_ALL_MATCHES},
+         *                     {@link android.bluetooth.le.ScanSettings#CALLBACK_TYPE_FIRST_MATCH} or
+         *                     {@link android.bluetooth.le.ScanSettings#CALLBACK_TYPE_MATCH_LOST}
+         * @param result       A Bluetooth LE scan result.
+         */
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            if(mScanning.get() && mScanType == ConnectionType.Theia_BLE) {
+                BluetoothDevice device = result.getDevice();
+                // If we have a find address, perform the V1 scanned callback and stop the
+                // scan.
+                if(mFindAddy != null) {
+                    if(mFindAddy.equals(device.getAddress())) {
+                        stopScan();
+                        performV1connectionScannedCallback(BluetoothScanner.this, device, ConnectionType.Theia_BLE, result.getRssi());
+                    }
+                    return;
+                }
+                // If the find address isn't null and has characters, check to see if it matches.
+                performV1connectionScannedCallback(BluetoothScanner.this, device, ConnectionType.Theia_BLE, result.getRssi());
             }
         }
     }

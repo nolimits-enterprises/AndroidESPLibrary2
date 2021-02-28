@@ -135,7 +135,20 @@ public class V1ScannerDialog extends DialogFragment implements BTScanListener, B
      * @param checkedId
      */
     private void onConnectionTypedChanged(RadioGroup group, int checkedId) {
-        ConnectionType scanType = (checkedId == R.id.le) ? ConnectionType.LE : ConnectionType.SPP;
+        ConnectionType scanType;
+        switch(checkedId)
+        {
+            case R.id.le:
+                scanType = ConnectionType.LE;
+                break;
+            case R.id.theia:
+                scanType = ConnectionType.Theia_BLE;
+                break;
+            default:
+                scanType = ConnectionType.SPP;
+                break;
+        }
+
         // If the can type has changed, notify the scanner
         if (mScanType != scanType) {
             mScanType = scanType;

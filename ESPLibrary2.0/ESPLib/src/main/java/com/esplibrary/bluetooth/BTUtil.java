@@ -35,6 +35,9 @@ public class BTUtil {
     public final static UUID        GAP_DEVICE_NAME_CHARACTERISTIC_UUID = UUID.fromString(GAP_DEVICE_NAME_UUID_STR);
     public final static UUID        CLIENT_CHARACTERISTIC_CONFIG_CHARACTERISTIC_UUID = UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG_STR);
 
+    public final static String THEIA_LE_SERVICE_UUID_STR = "8a7eeeb6-36e8-420e-bcbd-fb59e7b0501a";
+    public final static UUID THEIA_UUID = UUID.fromString(THEIA_LE_SERVICE_UUID_STR);
+
 
     /**
      * Helper method for converting a space delimited hex string into a byte array.
