@@ -108,6 +108,7 @@ public class BluetoothScanner extends BroadcastReceiver implements IScanner {
      *
      * @return  True if a scan was initiated otherwise false is returned.
      */
+    @RequiresApi(api = VERSION_CODES.Q)
     @SuppressLint("MissingPermission")
     private boolean performScanForType(ConnectionType type) {
         // These two types are unsupported.
@@ -139,12 +140,15 @@ public class BluetoothScanner extends BroadcastReceiver implements IScanner {
             scanSettingsBuilder.setScanMode(mScanMode);
             List<ScanFilter> filters = new ArrayList<>(1);
             // Creates a scanFilter Builder for the Theia LE UUID.
-            ScanFilter.Builder filterBuilder = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(BTUtil.THEIA_UUID));
+            //ScanFilter.Builder filterBuilder = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(BTUtil.V1CONNECTION_LE_SERVICE_UUID));
+            ParcelUuid id = new ParcelUuid(BTUtil.THEIA_UUID);
+            ScanFilter.Builder filterBuilder = new ScanFilter.Builder().setDeviceName("Gobbledegook");
             filters.add(filterBuilder.build());
             if (mTheiaScanCB == null) {
                 mTheiaScanCB = new V1cTheiaScanCallback();
+                //mTheiaScanCB = new V1cLEScanCallback();
             }
-            scanner.startScan(filters, scanSettingsBuilder.build(), mTheiaScanCB);
+            scanner.startScan(filters, scanSettingsBuilder.build(), new V1cTheiaScanCallback());
         }
         else {
             BluetoothLeScanner scanner = mBTAdptr.getBluetoothLeScanner();
@@ -160,7 +164,7 @@ public class BluetoothScanner extends BroadcastReceiver implements IScanner {
             scanSettingsBuilder.setScanMode(mScanMode);
             List<ScanFilter> filters = new ArrayList<>(1);
             // Creates a scanFilter Builder for the V1 LE UUID.
-            ScanFilter.Builder filterBuilder = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(BTUtil.V1CONNECTION_LE_SERVICE_UUID));
+            ScanFilter.Builder filterBuilder = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(BTUtil.THEIA_UUID));
             filters.add(filterBuilder.build());
             if (mLEScanCB == null) {
                 mLEScanCB = new V1cLEScanCallback();
@@ -296,7 +300,7 @@ public class BluetoothScanner extends BroadcastReceiver implements IScanner {
          */
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            if(mScanning.get() && mScanType == ConnectionType.Theia_BLE) {
+            if(mScanning.get()) {
                 BluetoothDevice device = result.getDevice();
                 // If we have a find address, perform the V1 scanned callback and stop the
                 // scan.

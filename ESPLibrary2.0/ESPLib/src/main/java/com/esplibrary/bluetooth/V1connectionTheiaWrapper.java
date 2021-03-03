@@ -58,7 +58,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
 
     @Override
     public ConnectionType getConnectionType() {
-        return ConnectionType.LE;
+        return ConnectionType.Theia_BLE;
     }
 
     @Override
