@@ -98,8 +98,7 @@ public class ESPTheiaClient implements IESPClient {
 
     @Override
     public boolean isLegacy() {
-        // If the valentine type is equal to Legacy return true.
-        return mConnection.getValentineType() == DeviceId.VALENTINE_ONE_LEGACY;
+        return false;
     }
 
     //region State methods
@@ -143,12 +142,12 @@ public class ESPTheiaClient implements IESPClient {
     //region V1 info methods
     @Override
     public DeviceId getValentineType() {
-        return mConnection.getValentineType();
+        return DeviceId.THEIA_DEVICE;
     }
 
     @Override
     public boolean areDefaultSweepDefinitionsAvailableForV1Version(double v1Version) {
-        return V1VersionInfo.areDefaultSweepDefsAvailable(v1Version);
+        return true;
     }
     //endregion
 
@@ -296,266 +295,46 @@ public class ESPTheiaClient implements IESPClient {
     //region ESP Data Request methods
     @Override
     public void requestVersion(DeviceId deviceID, ESPRequestedDataListener<String> callback) {
-        // Generate the Version packet.
-        ESPPacket versionRequest = new RequestVersion(mConnection.getValentineType(), deviceID);
-        // Create a response respHandler that will invoked the esp packet listener callback.
-        ResponseHandler<ResponseVersion> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.RESPVERSION);
-        // Add a response callback to receive the device version.
-        handler.successCallback = response -> {
-            // Response should never be null but in case of bugs we wanna prevent a null pointer
-            // exception.
-            if (response != null) {
-                if (callback != null) {
-                    final String version = response.getVersion();
-                    // Make sure we got a valid version string.
-                    if(version.length() != 7 || !Character.isAlphabetic(version.codePointAt(0))) {
-                        callback.onDataReceived(null, "Received a bad version for " + deviceID.toString());
-                        return true;
-                    }
-                    callback.onDataReceived(version, null);
-                }
-            }
-            // Always return true so that the response respHandler is remove from the queue.
-            return true;
-        };
-        // Add a failure callback.
-        handler.failureCallback = error -> {
-            if (error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-        };
-
-        // Queue the packet.
-        mConnection.addRequest(new ESPRequest(versionRequest, handler));
     }
 
     @Override
     public void requestVersionAsDouble(DeviceId device, ESPRequestedDataListener<Double> callback) {
-        requestVersion(device, (deviceVersion, error) -> {
-            if (callback != null) {
-                if (error != null) {
-                    callback.onDataReceived(null, error);
-                    return;
-                }
-                // Auto box the version into a double.
-                callback.onDataReceived(ResponseVersion.getVersionDouble(deviceVersion), null);
-            }
-        });
     }
 
     @Override
     public void requestSerialNumber(DeviceId deviceID, ESPRequestedDataListener<String> callback) {
-        // Generate the Serial Number packet.
-        ESPPacket serialNumberRequest = new RequestSerialNumber(mConnection.getValentineType(), deviceID);
-        // Create a response respHandler that will invoked the esp packet listener callback.
-        ResponseHandler<ResponseSerialNumber> handler = new ResponseHandler<>();
-        // We want to listener for the serial number response callback
-        handler.addResponseID(PacketId.RESPSERIALNUMBER);
-        // Add a response callback to receive the serial number.
-        handler.successCallback = response -> {
-            if (response != null) {
-                String serialNumber = response.getSerialNumber();
-                if (callback != null) {
-                    callback.onDataReceived(serialNumber, null);
-                }
-            }
-            return true;
-        };
-
-        handler.failureCallback = error -> {
-            if (error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-        };
-
-        // Queue the packet.
-        mConnection.addRequest(new ESPRequest(serialNumberRequest, handler));
     }
 
     @Override
     public void requestUserSettings(double v1Version, ESPRequestedDataListener<UserSettings> callback) {
-        ESPPacket userSettingsRequest = new RequestUserBytes(mConnection.getValentineType());
-        // Create a response respHandler that will invoked the esp packet listener callback.
-        ResponseHandler<ResponseUserBytes> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.RESPUSERBYTES);
-        handler.successCallback = response -> {
-            if (response != null) {
-                if (callback != null) {
-                    callback.onDataReceived(response.getUserSettings(v1Version), null);
-                }
-            }
-            return true;
-        };
-        handler.failureCallback = error -> {
-            if (error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-        };
-        // Queue the packet.
-        mConnection.addRequest(new ESPRequest(userSettingsRequest, handler));
     }
 
     @Override
     public void requestUserBytes(ESPRequestedDataListener<byte[]> callback) {
-        ESPPacket userSettingsRequest = new RequestUserBytes(mConnection.getValentineType());
-        // Create a response respHandler that will invoked the esp packet listener callback.
-        ResponseHandler<ResponseUserBytes> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.RESPUSERBYTES);
-        handler.successCallback = response -> {
-            if (response != null) {
-                if (callback != null) {
-                    callback.onDataReceived(response.getUserBytes(), null);
-                }
-            }
-            return true;
-        };
-        handler.failureCallback = error -> {
-            if (error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-        };
-        // Queue the packet.
-        mConnection.addRequest(new ESPRequest(userSettingsRequest, handler));
     }
 
     @Override
     public void requestWriteUserBytes(byte[] userBytes, ESPRequestListener callback) {
-        RequestWriteUserBytes userBytesRequest = new RequestWriteUserBytes(mConnection.getValentineType(), userBytes);
-        ResponseHandler handler = new ResponseHandler<>();
-        handler.successCallback = packet -> {
-            // Consider requesting the sent user bytes and performing a comparison on them with
-            //  the provided userbytes.
-            if (callback != null) {
-                callback.onRequestCompleted(null);
-            }
-            return true;
-        };
-        handler.failureCallback = error -> {
-            if (callback != null) {
-                callback.onRequestCompleted(error);
-            }
-        };
-        mConnection.addRequest(new ESPRequest(userBytesRequest, handler));
     }
 
     @Override
     public void requestMaxSweepIndex(ESPRequestedDataListener<Integer> callback) {
-        ESPPacket maxSweepRequest = new RequestMaxSweepIndex(mConnection.getValentineType());
-        // Create a response respHandler that will invoked the esp packet listener callback.
-        ResponseHandler<ResponseMaxSweepIndex> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.RESPMAXSWEEPINDEX);
-        handler.successCallback = response -> {
-            if (response != null) {
-                if (callback != null) {
-                    callback.onDataReceived(response.getMaxSweepIndex(), null);
-                }
-            }
-            return true;
-        };
-        handler.failureCallback = error -> {
-            if (error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-        };
-
-        // Queue the packet.
-        mConnection.addRequest(new ESPRequest(maxSweepRequest, handler));
     }
 
     @Override
     public void requestSweepSections(ESPRequestedDataListener<List<SweepSection>> callback) {
-        ESPPacket sweepSectionRequest = new RequestSweepSections(mConnection.getValentineType());
-        final SweepSectionProcessor processor = new SweepSectionProcessor();
-        // Create a response respHandler that will invoked the esp packet listener callback.
-        ResponseHandler<ResponseSweepSections> handler = new ResponseHandler<>();
-        // Add the packet ID the response respHandler should be invoked for
-        handler.addResponseID(PacketId.RESPSWEEPSECTIONS);
-        handler.successCallback = response -> {
-            // Add the sweep range responses to the processor until we are returned a list of
-            // sweep sections.
-            List<SweepSection> swpSections = processor.addSweepSection(response);
-            if (swpSections != null) {
-                if (callback != null) {
-                    callback.onDataReceived(swpSections, null);
-                }
-                return true;
-            }
-            return false;
-        };
-        handler.failureCallback = error -> {
-            if (error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-        };
-        // Queue the packet.
-        mConnection.addRequest(new ESPRequest(sweepSectionRequest, handler));
     }
 
     @Override
     public void requestAllSweepDefinitions(ESPRequestedDataListener<List<SweepDefinition>> callback) {
-        // We need the max sweep index before we can packet the Sweep definitions because we have
-        // no way of knowing how many there could be.
-        requestMaxSweepIndex((data, error) -> {
-            if(error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-            else {
-                requestSweepDefinitions(false, PacketId.RESPSWEEPDEFINITION, data, callback);
-            }
-        });
     }
 
     @Override
     public void requestDefaultSweeps(ESPRequestListener callback) {
-        RequestDefaultSweeps defaultSweepsRequest = new RequestDefaultSweeps(mConnection.getValentineType());
-        ResponseHandler<ESPPacket> handler = new ResponseHandler<>();
-        // We have no particular response to look for, we just wanna make sure that we didn't
-        // encounter an error sending the packet.
-        handler.successCallback = response -> {
-            if (callback != null) {
-                callback.onRequestCompleted(null);
-            }
-            return true;
-        };
-        // Add failure callback that will invoked the onRequestCompleted callback indicating the
-        // reason the packet failed.
-        handler.failureCallback = error -> {
-            if (callback != null) {
-                callback.onRequestCompleted(error);
-            }
-        };
-        mConnection.addRequest(new ESPRequest(defaultSweepsRequest, handler));
     }
 
     @Override
     public void requestDefaultSweepDefinitions(ESPRequestedDataListener<List<SweepDefinition>> callback) {
-        // We need the max sweep index before we can packet the default Sweep definitions because we have
-        // no way of knowing how many there could be.
-        requestMaxSweepIndex((data, error) -> {
-            if(error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-            else {
-                requestSweepDefinitions(true, PacketId.RESPDEFAULTSWEEPDEFINITIONS,  data, callback);
-            }
-        });
     }
 
     /**
@@ -566,102 +345,11 @@ public class ESPTheiaClient implements IESPClient {
      * @param callback  Callback that will be invoked once the sweep definitions are received
      */
     private void requestSweepDefinitions(boolean defaultSweeps, int responseID, int maxSweepIndex, ESPRequestedDataListener<List<SweepDefinition>> callback) {
-        final SweepDefinitionProcessor sweepProcessor = new SweepDefinitionProcessor(maxSweepIndex + 1);
-        ESPPacket sweepRequest;
-        if(defaultSweeps) {
-            sweepRequest = new RequestDefaultSweepDefinitions(mConnection.getValentineType());
-        }
-        else {
-            sweepRequest = new RequestAllSweepDefinitions(mConnection.getValentineType());
-        }
-        // Create a response respHandler that will be invoked when the esp packet listener callback.
-        ResponseHandler<ESPPacket> handler = new ResponseHandler<>();
-        // Add the packet ID the response respHandler should be invoked for
-        handler.addResponseID(responseID);
-        handler.successCallback = response -> {
-            if (response != null) {
-                SweepDefinition def = (SweepDefinition) response.getResponseData();
-                // Attempt to construct a list of sweep definitions from the attached V1.
-                List<SweepDefinition> rxSweeps = sweepProcessor.addSweepDefinition(def);
-                // If we've received all sweeps invoke the callback.
-                if(rxSweeps != null) {
-                    if (callback != null) {
-                        callback.onDataReceived(rxSweeps, null);
-                    }
-                    return true;
-                }
-            }
-            return false;
-        };
-        handler.failureCallback = sweepError -> {
-            if (sweepError != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, sweepError);
-                }
-            }
-        };
-        // Queue the packet.
-        mConnection.addRequest(new ESPRequest(sweepRequest, handler));
+
     }
 
     @Override
     public void requestSweepData(double v1Version, ESPRequestedDataListener<SweepData> callback) {
-        // We first want to packet the sweep sections.
-        requestSweepSections((sweepSections, error) -> {
-            if(error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-                return;
-            }
-            // We've successfully received the V1's custom sweeps, next we want to packet the
-            // maximum number of sweeps..
-            requestMaxSweepIndex((data, maxSweepError) -> {
-                if (maxSweepError != null) {
-                    if (callback != null) {
-                        callback.onDataReceived(null, maxSweepError);
-                    }
-                    return;
-                }
-
-                final int maxSweepIndex = data;
-                if(areDefaultSweepDefinitionsAvailableForV1Version(v1Version)) {
-                    // Request the default sweeps
-                    requestSweepDefinitions(true, PacketId.RESPDEFAULTSWEEPDEFINITIONS, maxSweepIndex, (defaultSweeps, defaultSweepError) -> {
-                        if(defaultSweepError != null) {
-                            if (callback != null) {
-                                callback.onDataReceived(null, "Failed to received the Sweep data from the connected V1");
-                            }
-                            return;
-                        }
-                        requestSweepDefinitions(false, PacketId.RESPSWEEPDEFINITION, maxSweepIndex, (sweeps, sweepDefinitionError) -> {
-                            if (callback != null) {
-                                if(sweepDefinitionError != null) {
-                                    callback.onDataReceived(null, "Failed to received the Sweep data from the connected V1");
-                                    return;
-                                }
-                                // Construct a sweep data object using the received sweep data.
-                                SweepData sweepData = new SweepData(maxSweepIndex, sweepSections, defaultSweeps, sweeps);
-                                callback.onDataReceived(sweepData, null);
-                            }
-                        });
-                    });
-                }
-                else {
-                    requestSweepDefinitions(false, PacketId.RESPSWEEPDEFINITION, maxSweepIndex, (sweeps, sweepError) -> {
-                        if (callback != null) {
-                            if(sweepError != null) {
-                                callback.onDataReceived(null, "Failed to received the Sweep data from the connected V1");
-                                return;
-                            }
-                            // Construct a sweep data object using the received sweep data.
-                            SweepData sweepData = new SweepData(maxSweepIndex, sweepSections, null, sweeps);
-                            callback.onDataReceived(sweepData, null);
-                        }
-                    });
-                }
-            });
-        });
     }
 
     @Override
@@ -671,30 +359,6 @@ public class ESPTheiaClient implements IESPClient {
 
     @Override
     public void requestSAVVYStatus(ESPRequestedDataListener<SAVVYStatus> callback, long requestTimeout) {
-        ESPPacket packet = new RequestSAVVYStatus(mConnection.getValentineType());
-        ResponseHandler<ResponseSAVVYStatus> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.RESPSAVVYSTATUS);
-        // Add a response callback that will get invoked once the savvy status is received.
-        handler.successCallback = response -> {
-            if (response != null) {
-                if (callback != null) {
-                    SAVVYStatus savvyStatus = response.getSavvyStatus();
-                    callback.onDataReceived(savvyStatus, null);
-                }
-            }
-            return true;
-        };
-        // Failure callback that will get invoked if the packet times out.
-        handler.failureCallback = error -> {
-            if (error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-        };
-        ESPRequest req = new ESPRequest(packet, handler);
-        req.setTimeout(requestTimeout);
-        mConnection.addRequest(req);
     }
 
     @Override
@@ -709,255 +373,39 @@ public class ESPTheiaClient implements IESPClient {
 
     @Override
     public void requestOverrideThumbwheel(byte speed, ESPRequestListener callback) {
-        RequestOverrideThumbwheel thumbwheelRequest = new RequestOverrideThumbwheel(mConnection.getValentineType(),
-                speed);
-        ResponseHandler handler = new ResponseHandler();
-        handler.successCallback = packet -> {
-            // CONSIDER REQUESTING THE SAVVYSTATUS AND MAKING SURE THE THUMBWHEEL IS ACTUALLY
-            // OVERRIDDEN
-            if (callback != null) {
-                callback.onRequestCompleted(null);
-            }
-            return true;
-        };
-
-        handler.failureCallback = error -> {
-            if (callback != null) {
-                callback.onRequestCompleted(error);
-            }
-        };
-
-        mConnection.addRequest(new ESPRequest(thumbwheelRequest, handler));
     }
 
     @Override
     public void requestSAVVYUnmute(boolean muteEnabled, ESPRequestListener callback) {
-        RequestSavvyUnmuteEnable savvyMuteRequest = new RequestSavvyUnmuteEnable(mConnection.getValentineType(), muteEnabled);
-        ResponseHandler handler = new ResponseHandler();
-        handler.successCallback = packet -> {
-            if (callback != null) {
-                callback.onRequestCompleted(null);
-            }
-            return true;
-        };
-
-        handler.failureCallback = error -> {
-            if (callback != null) {
-                callback.onRequestCompleted(error);
-            }
-        };
-
-        mConnection.addRequest(new ESPRequest(savvyMuteRequest, handler));
     }
 
     @Override
     public void requestVehicleSpeed(ESPRequestedDataListener<Integer> callback) {
-        ESPPacket vehicleSpeedRequet = new RequestVehicleSpeed(mConnection.getValentineType());
-        ResponseHandler<ResponseVehicleSpeed> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.RESPVEHICLESPEED);
-        // Add a response callback that will get invoked once the vehicle speed is received.
-        handler.successCallback = response -> {
-            if (response != null) {
-                if (callback != null) {
-                    callback.onDataReceived(response.getVehicleSpeed(), null);
-                }
-            }
-            return true;
-        };
-        // Failure callback that will get invoked if the packet times out.
-        handler.failureCallback = error -> {
-            if (error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-        };
-
-        mConnection.addRequest(new ESPRequest(vehicleSpeedRequet, handler));
     }
 
     @Override
     public void requestBatteryVoltage(ESPRequestedDataListener<String> callback) {
-        ESPPacket batteryVoltageRequest = new RequestBatteryVoltage(mConnection.getValentineType());
-        ResponseHandler<ResponseBatteryVoltage> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.RESPBATTERYVOLTAGE);
-        // Add a response callback that will get invoked once the battery voltage is received.
-        handler.successCallback = response -> {
-            if (response != null) {
-                if (callback != null) {
-                    callback.onDataReceived(response.getBatteryVoltage(), null);
-                }
-            }
-            return true;
-        };
-        // Failure callback that will get invoked if the packet times out.
-        handler.failureCallback = error -> {
-            if (error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-        };
-        mConnection.addRequest(new ESPRequest(batteryVoltageRequest, handler));
     }
 
     @SuppressLint("DefaultLocale")
     @Override
     public void requestWriteSweepDefinitions(List<SweepDefinition> sweeps, ESPRequestedDataListener<Integer> callback) {
-        ResponseHandler<ResponseSweepWriteResult> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.RESPSWEEPWRITERESULT);
-        handler.successCallback = response -> {
-            if (response != null) {
-                int writeResult = response.getWriteResult();
-                if (callback != null) {
-                    // If the write result isn't zero, indicate which sweep was invalid.
-                    if(writeResult != 0) {
-                        callback.onDataReceived(null, String.format("Sweep Definition %d contains invalid data", writeResult));
-                    }
-                    else {
-                        callback.onDataReceived(writeResult, null);
-                    }
-                }
-            }
-            return true;
-        };
-
-        // Failure callback that will get invoked if the requests times out.
-        handler.failureCallback = error -> {
-            if (error != null) {
-                if (callback != null) {
-                    callback.onDataReceived(null, error);
-                }
-            }
-        };
-
-        // Loop through all sweeps and write them setting the commit bit on the very last sweep.
-        for (int i = 0; i < sweeps.size(); i++) {
-            SweepDefinition definition = sweeps.get(i);
-            // If this is the last sweep indicate it's the commit sweep.
-            if(i == (sweeps.size() - 1)) {
-                definition.setCommit(true);
-            }
-
-            // Create a sweep write packet using the sweep definition
-            RequestWriteSweepDefinition writeSweepRequest = new
-                    RequestWriteSweepDefinition(mConnection.getValentineType(), definition);
-            mConnection.addRequest(new ESPRequest(writeSweepRequest, handler));
-        }
     }
 
     @Override
     public void requestMute(final boolean mute, ESPRequestListener callback) {
-        ESPPacket packet;
-        if (mute) {
-            packet = new RequestMuteOn(mConnection.getValentineType());
-        }
-        else {
-            packet = new RequestMuteOff(mConnection.getValentineType());
-        }
-
-        ResponseHandler<InfDisplayData> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.INFDISPLAYDATA);
-        handler.successCallback = displayData -> {
-            boolean muted = displayData.isSoft();
-            if(muted == mute) {
-                if (callback != null) {
-                    // Pass in null to indicate that there was no muting the v1.
-                    callback.onRequestCompleted(null);
-                }
-                return true;
-            }
-            return false;
-        };
-        // If we encounter an error we want to return the V1's current mute status.
-        handler.failureCallback = error -> {
-            if(callback != null) {
-                callback.onRequestCompleted(error);
-            }
-        };
-        mConnection.addRequest(new ESPRequest(packet, handler));
     }
 
     @Override
     public void requestChangeMode(V1Mode mode, ESPRequestListener callback) {
-        byte modeB = (byte) mode.getValue();
-        ESPPacket modeChangeRequest = new RequestChangeMode(mConnection.getValentineType(), modeB);
-        ResponseHandler<InfDisplayData> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.INFDISPLAYDATA);
-        AtomicInteger cnt = new AtomicInteger(0);
-        handler.successCallback = displayData -> {
-            cnt.incrementAndGet();
-            if(cnt.get() < 5) {
-                // We need to receive 5 display data packets before returning invoking the callback
-                cnt.incrementAndGet();
-                return false;
-            }
-            if (callback != null) {
-                callback.onRequestCompleted(null);
-            }
-            return true;
-        };
-        // If we encounter an error we want to return the V1's current mute status.
-        handler.failureCallback = error -> {
-            if(callback != null) {
-                callback.onRequestCompleted(error);
-            }
-        };
-        mConnection.addRequest(new ESPRequest(modeChangeRequest, handler));
     }
 
     @Override
     public void requestDisplayOn(final boolean on, ESPRequestListener callback) {
-        ESPPacket displayRequest;
-        if (on) {
-            displayRequest = new RequestTurnOnMainDisplay(mConnection.getValentineType());
-        }
-        else {
-            displayRequest = new RequestTurnOffMainDisplay(mConnection.getValentineType());
-        }
-
-        ResponseHandler<InfDisplayData> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.INFDISPLAYDATA);
-        handler.successCallback = displayData -> {
-            if(displayData.isDisplayOn() == on) {
-                if (callback != null) {
-                    callback.onRequestCompleted(null);
-                }
-                return true;
-            }
-            return false;
-        };
-        // If we encounter an error we want to return the V1's current mute status.
-        handler.failureCallback = error -> {
-            if(callback != null) {
-                callback.onRequestCompleted(error);
-            }
-        };
-        mConnection.addRequest(new ESPRequest(displayRequest, handler));
     }
 
     @Override
     public void requestStartAlertData(ESPRequestListener callback) {
-        ESPPacket alertDataRequest = new RequestStartAlertData(mConnection.getValentineType());
-        // Response respHandler that will be invoked for the first received alert data.
-        ResponseHandler<ResponseAlertData> handler = new ResponseHandler<>();
-        handler.addResponseID(PacketId.RESPALERTDATA);
-        handler.successCallback = response -> {
-            // If we get a response indicate the packet completed.
-            if (callback != null) {
-                callback.onRequestCompleted(null);
-            }
-            return true;
-        };
-        // Add failure callback that will invoked the onRequestCompleted callback indicating the
-        // reason the packet failed.
-        handler.failureCallback = error -> {
-            if (callback != null) {
-                callback.onRequestCompleted(error);
-            }
-        };
-
-        mConnection.addRequest(new ESPRequest(alertDataRequest, handler));
     }
 
     @Override
@@ -977,42 +425,10 @@ public class ESPTheiaClient implements IESPClient {
      * @param sendNext Indicates if the stop at data request should be send next
      */
     private void stopAlertData(ESPRequestListener callback, boolean sendNext) {
-        ESPPacket alertDataRequest = new RequestStopAlertData(mConnection.getValentineType());
-        ResponseHandler handler = new ResponseHandler();
-        handler.successCallback = response -> {
-            if (callback != null) {
-                callback.onRequestCompleted(null);
-            }
-            return true;
-        };
-        // Add failure callback that will invoked the onRequestCompleted callback indicating the
-        // reason the packet failed.
-        handler.failureCallback = error -> {
-            if (callback != null) {
-                callback.onRequestCompleted(error);
-            }
-        };
-        mConnection.addRequest(new ESPRequest(alertDataRequest, handler), sendNext);
     }
 
     @Override
     public void requestFactoryDefault(DeviceId device, ESPRequestListener callback) {
-        RequestFactoryDefault factoryDefaultRequest = new RequestFactoryDefault(mConnection.getValentineType(), device);
-        ResponseHandler handler = new ResponseHandler();
-        handler.successCallback = response -> {
-            if (callback != null) {
-                callback.onRequestCompleted(null);
-            }
-            return true;
-        };
-        // Add failure callback that will invoked the onRequestCompleted callback indicating the
-        // reason the packet failed.
-        handler.failureCallback = error -> {
-            if (callback != null) {
-                callback.onRequestCompleted(error);
-            }
-        };
-        mConnection.addRequest(new ESPRequest(factoryDefaultRequest, handler));
     }
 
     /**

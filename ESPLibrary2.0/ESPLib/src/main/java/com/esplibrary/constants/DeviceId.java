@@ -35,7 +35,9 @@ public enum DeviceId {
     /** Legacy Valentine One */
     VALENTINE_ONE_LEGACY(Constants.VALENTINE_ONE_LEGACY_BYTE,"Valentine One Legacy"),
     /**Unknown ESP Device */
-    UNKNOWN_DEVICE(Constants.UNKNOWN_DEVICE_BYTE, "Unknown Device");
+    UNKNOWN_DEVICE(Constants.UNKNOWN_DEVICE_BYTE, "Unknown Device"),
+
+    THEIA_DEVICE(Constants.THEIA_DEVICE_BYTE, "Theia");
 
     public final byte value;
 
@@ -67,6 +69,7 @@ public enum DeviceId {
             case 0x09: return VALENTINE_ONE_NO_CHECKSUM;
             case 0x0A: return VALENTINE_ONE;
             case (byte) 0x98: return VALENTINE_ONE_LEGACY;
+            case (byte)0xfe: return THEIA_DEVICE;
             default: return UNKNOWN_DEVICE;
         }
     }

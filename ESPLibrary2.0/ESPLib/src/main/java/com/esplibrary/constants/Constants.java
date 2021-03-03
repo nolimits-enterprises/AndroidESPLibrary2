@@ -30,4 +30,7 @@ public class Constants {
     public final static byte VALENTINE_ONE_LEGACY_BYTE = (byte) 0x98;
     /**Unknown ESP device byte value.*/
     public final static byte UNKNOWN_DEVICE_BYTE = (byte) 0x99;
+
+    /** virtual address for theia **/
+    public final static byte THEIA_DEVICE_BYTE = (byte) 0xfe;
 }

@@ -12,6 +12,7 @@ import com.esplibrary.bluetooth.ConnectionType;
 import com.esplibrary.bluetooth.RSSICallback;
 import com.esplibrary.bluetooth.V1connectionDemoWrapper;
 import com.esplibrary.bluetooth.V1connectionLEWrapper;
+import com.esplibrary.bluetooth.V1connectionTheiaWrapper;
 import com.esplibrary.bluetooth.V1connectionWrapper;
 import com.esplibrary.client.callbacks.ESPRequestListener;
 import com.esplibrary.client.callbacks.ESPRequestedDataListener;
@@ -89,7 +90,7 @@ public interface IESPClient {
                 client = new ESPValentineClient(appContext, new V1connectionWrapper(listener, factory, dataTimeout));
                 break;
             case Theia_BLE:
-                client = new ESPTheiaClient(appContext, new V1connectionLEWrapper(listener, factory, dataTimeout));
+                client = new ESPTheiaClient(appContext, new V1connectionTheiaWrapper(listener, factory, dataTimeout));
                 break;
             default: // DEMO
                 client = new ESPValentineClient(appContext, new V1connectionDemoWrapper(listener, factory, dataTimeout));
