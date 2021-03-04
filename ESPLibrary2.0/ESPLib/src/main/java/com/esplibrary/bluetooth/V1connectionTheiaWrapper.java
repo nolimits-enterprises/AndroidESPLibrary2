@@ -11,6 +11,7 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -22,14 +23,79 @@ import com.esplibrary.packets.ESPPacket;
 import com.esplibrary.packets.PacketFactory;
 import com.esplibrary.packets.PacketUtils;
 import com.esplibrary.utilities.ESPLogger;
+import com.esplibrary.client.callbacks.ESPRequestedDataListener;
 
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements GattCallback {
 
+    public class TheiaGattCallback extends BluetoothGattCallback {
+        private V1connectionTheiaWrapper w;
+
+        public class callbackEntry
+        {
+            ESPRequestedDataListener l;
+            UUID match;
+        }
+
+        TheiaGattCallback(V1connectionTheiaWrapper wr)
+        {
+            w = wr;
+        }
+        @Override
+        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            if (status == 0)
+            {
+                //if (characteristic.getUuid() == );
+                String res = characteristic.getStringValue(0);
+                ESPLogger.e("ONCharacteristic Read " ,"onCharacteristicRead: " + res);
+                return;
+            }
+            else
+            {
+                ESPLogger.e("ONCHARREAD", "Got status = " + String.valueOf(status));
+            }
+            super.onCharacteristicRead(gatt, characteristic, status);
+        }
+        @Override
+        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            w.onConnectionStateChange(gatt, status, newState);
+        }
+
+        @Override
+        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            w.onServicesDiscovered(gatt, status);
+        }
+
+        @Override
+        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor,
+                                      int status) {
+            w.onDescriptorWrite(gatt, descriptor, status);
+        }
+
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt gatt,
+                                          BluetoothGattCharacteristic characteristic, int status) {
+            w.onCharacteristicWrite(gatt, characteristic, status);
+        }
+
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt gatt,
+                                            BluetoothGattCharacteristic characteristic) {
+            w.onCharacteristicChanged(gatt, characteristic);
+        }
+
+        @Override
+        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
+            w.onReadRemoteRssi(gatt, rssi, status);
+        }
+    }
+
     private final static String LOG_TAG = "TheiaV1cWrpr";
 
-    private final V1cGattCallback mGattCallback;
+    private final TheiaGattCallback mGattCallback;
     protected BluetoothGatt mGatt;
     protected BluetoothGattCharacteristic mClientOut;
     private Handler mHandler;
@@ -51,7 +117,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         super(listener, factory, timeoutInMillis);
         // Create a V1GattCallback and pass a reference to our self so it pass along the GATT callbacks to us.
         // We do this because BluetoothGattCallback is an abstract class and we cannot have duel inheritance in java.
-        mGattCallback = new V1cGattCallback(this);
+        mGattCallback = new TheiaGattCallback(this);
         mHandler = new Handler();
         mCanWrite.set(false);
     }
@@ -66,6 +132,11 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         synchronized (this) {
             return mRSSI;
         }
+    }
+
+    public BluetoothGatt getGatt()
+    {
+        return mGatt;
     }
 
     @Override
@@ -323,9 +394,13 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
                 .toString());
         // If the service discovery was successful, enable notifications for the V1-out, client-in characteristic.
         if(status == BluetoothGatt.GATT_SUCCESS) {
+            List<BluetoothGattService> l = gatt.getServices();
+
+
             // Make sure we were in the correct state when services were discovered.
             if(mState.get() == STATE_CONNECTING) {
                 discoveryESPGATTCharacteristics(gatt);
+                onConnected();
                 getHandler().obtainMessage(WHAT_CONNECTION_EVENT, ConnectionEvent.Connected.ordinal(),
                         0).sendToTarget();
             }
@@ -399,6 +474,12 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
                 }
             }
         }
+    }
+
+
+    public void OnCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status)
+    {
+
     }
 
     @Override

@@ -2,6 +2,8 @@ package com.esplibrary.client;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
@@ -12,6 +14,7 @@ import com.esplibrary.bluetooth.ConnectionListener;
 import com.esplibrary.bluetooth.ConnectionType;
 import com.esplibrary.bluetooth.IV1connectionWrapper;
 import com.esplibrary.bluetooth.RSSICallback;
+import com.esplibrary.bluetooth.V1connectionTheiaWrapper;
 import com.esplibrary.client.callbacks.ESPRequestListener;
 import com.esplibrary.client.callbacks.ESPRequestedDataListener;
 import com.esplibrary.client.callbacks.MalformedDataListener;
@@ -64,6 +67,7 @@ import com.esplibrary.utilities.ESPLogger;
 import com.esplibrary.utilities.V1VersionInfo;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -77,13 +81,17 @@ public class ESPTheiaClient implements IESPClient {
      * Underlying bluetooth connection.
      */
     private final IV1connectionWrapper mConnection;
+
+    // we keep the theia specific implementation seperately
+    private final V1connectionTheiaWrapper mTheiaConnection;
     /**
      * Application context used for performing various actions in the library, such as connecting and scanning.
      */
     private final Context mAppCtx;
 
-    public ESPTheiaClient(Context appContext, IV1connectionWrapper connection) {
+    public ESPTheiaClient(Context appContext, V1connectionTheiaWrapper connection) {
         mConnection = connection;
+        mTheiaConnection = connection;
         mAppCtx = appContext.getApplicationContext();
     }
 
@@ -295,6 +303,23 @@ public class ESPTheiaClient implements IESPClient {
     //region ESP Data Request methods
     @Override
     public void requestVersion(DeviceId deviceID, ESPRequestedDataListener<String> callback) {
+        BluetoothGattService l = mTheiaConnection.getGatt().getService(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b0501a"));
+        if(null == l)
+        {
+            ESPLogger.e("charTest", "Failed to get Service");
+            return;
+        }
+        BluetoothGattCharacteristic c = l.getCharacteristic(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b05020"));
+        if(null == l)
+        {
+            ESPLogger.e("charTest", "Failed to get characeteristic");
+            return;
+        }
+        if (false == mTheiaConnection.getGatt().readCharacteristic(c))
+        {
+            ESPLogger.e("charTest", "Failed to read characteristic");
+        }
+        callback.onDataReceived("Test version response", null);
     }
 
     @Override
