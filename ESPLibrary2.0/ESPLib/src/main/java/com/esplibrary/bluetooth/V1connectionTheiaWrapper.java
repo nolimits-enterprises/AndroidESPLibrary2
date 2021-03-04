@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements GattCallback {
 
-    private final static String LOG_TAG = "LEV1cWrpr";
+    private final static String LOG_TAG = "TheiaV1cWrpr";
 
     private final V1cGattCallback mGattCallback;
     protected BluetoothGatt mGatt;
@@ -115,7 +115,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         // ADD OREO SUPPORT IN SOON
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // TODO: 8/25/2017 ADD OREO SUPPORT INTO THE LIBRARY
-            return device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_AUTO, BluetoothDevice.PHY_LE_1M);
+            return device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE, BluetoothDevice.PHY_LE_1M);
         }
         // Call the appropriate connGatt method based on the API level.
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -236,7 +236,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
                 if(isConnecting()) {
                     ESPLogger.d(LOG_TAG, "Bluetooth Gatt connected");
 
-                    BluetoothGattService leService = gatt.getService(BTUtil.V1CONNECTION_LE_SERVICE_UUID);
+                    BluetoothGattService leService = gatt.getService(BTUtil.THEIA_UUID);
                     if (leService == null) {
                         ESPLogger.d(LOG_TAG, String.format("V1connection LE Service is null after connecting to %s", BTUtil.getFriendlyName(gatt.getDevice())));
                     }
@@ -326,6 +326,8 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
             // Make sure we were in the correct state when services were discovered.
             if(mState.get() == STATE_CONNECTING) {
                 discoveryESPGATTCharacteristics(gatt);
+                getHandler().obtainMessage(WHAT_CONNECTION_EVENT, ConnectionEvent.Connected.ordinal(),
+                        0).sendToTarget();
             }
         }
         else {
@@ -339,10 +341,10 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
 
     protected void discoveryESPGATTCharacteristics(BluetoothGatt gatt) {
         BluetoothGattService service = gatt.getService(BTUtil.V1CONNECTION_LE_SERVICE_UUID);
-        mClientOut = service.getCharacteristic(BTUtil.CLIENT_OUT_V1_IN_SHORT_CHARACTERISTIC_UUID);
-        BluetoothGattCharacteristic v1OutClientIn = service.getCharacteristic(BTUtil.V1_OUT_CLIENT_IN_SHORT_CHARACTERISTIC_UUID);
+        //mClientOut = service.getCharacteristic(BTUtil.CLIENT_OUT_V1_IN_SHORT_CHARACTERISTIC_UUID);
+        //BluetoothGattCharacteristic v1OutClientIn = service.getCharacteristic(BTUtil.V1_OUT_CLIENT_IN_SHORT_CHARACTERISTIC_UUID);
         ESPLogger.d(LOG_TAG, "Enabling notifications for V1-Out/Client-In short BluetoothGattCharacteristic...");
-        enableCharacteristicNotifications(gatt, v1OutClientIn, true);
+        //enableCharacteristicNotifications(gatt, v1OutClientIn, true);
     }
 
     @Override
