@@ -319,7 +319,7 @@ public class ESPTheiaClient implements IESPClient {
         {
             ESPLogger.e("charTest", "Failed to read characteristic");
         }
-        callback.onDataReceived("Test version response", null);
+        mTheiaConnection.setVersionCallback(callback);
     }
 
     @Override

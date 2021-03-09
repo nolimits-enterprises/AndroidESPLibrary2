@@ -11,6 +11,7 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -25,40 +26,34 @@ import com.esplibrary.packets.PacketUtils;
 import com.esplibrary.utilities.ESPLogger;
 import com.esplibrary.client.callbacks.ESPRequestedDataListener;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements GattCallback {
 
+    /* callbacks for various functions */
+    ESPRequestedDataListener<String> versionCallback;
+    ESPClientListener mListener;
+
+    public void setVersionCallback(ESPRequestedDataListener<String> c) {
+        versionCallback = c;
+    }
+
+
     public class TheiaGattCallback extends BluetoothGattCallback {
         private V1connectionTheiaWrapper w;
 
-        public class callbackEntry
-        {
-            ESPRequestedDataListener l;
-            UUID match;
-        }
-
-        TheiaGattCallback(V1connectionTheiaWrapper wr)
-        {
+        TheiaGattCallback(V1connectionTheiaWrapper wr) {
             w = wr;
         }
+
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            if (status == 0)
-            {
-                //if (characteristic.getUuid() == );
-                String res = characteristic.getStringValue(0);
-                ESPLogger.e("ONCharacteristic Read " ,"onCharacteristicRead: " + res);
-                return;
-            }
-            else
-            {
-                ESPLogger.e("ONCHARREAD", "Got status = " + String.valueOf(status));
-            }
-            super.onCharacteristicRead(gatt, characteristic, status);
+            w.onCharacteristicRead(gatt, characteristic, status);
         }
+
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             w.onConnectionStateChange(gatt, status, newState);
@@ -107,11 +102,12 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
 
     /**
      * Constructs a Bluetooth Low-Energy {@link IV1connectionWrapper} instance.
-     * @param listener The {@link ESPClientListener callback} that will be invoked when ESP data is
-     *                 received.
-     * @param factory           {@link PacketFactory} used to construct ESP packets.
-     * @param timeoutInMillis   Number of milliseconds before the
-     * {@link NoDataListener#onNoDataDetected()} is invoked.
+     *
+     * @param listener        The {@link ESPClientListener callback} that will be invoked when ESP data is
+     *                        received.
+     * @param factory         {@link PacketFactory} used to construct ESP packets.
+     * @param timeoutInMillis Number of milliseconds before the
+     *                        {@link NoDataListener#onNoDataDetected()} is invoked.
      */
     public V1connectionTheiaWrapper(@Nullable ESPClientListener listener, PacketFactory factory, long timeoutInMillis) {
         super(listener, factory, timeoutInMillis);
@@ -120,6 +116,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         mGattCallback = new TheiaGattCallback(this);
         mHandler = new Handler();
         mCanWrite.set(false);
+        mListener = listener;
     }
 
     @Override
@@ -134,8 +131,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         }
     }
 
-    public BluetoothGatt getGatt()
-    {
+    public BluetoothGatt getGatt() {
         return mGatt;
     }
 
@@ -145,19 +141,18 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         // Always reset the notify on disconnection
         mNotifyOnDisconnection = true;
         // Check to see if we are already connecting or connected and return.
-        if(mState.get() == STATE_CONNECTING || mState.get() == STATE_CONNECTED) {
+        if (mState.get() == STATE_CONNECTING || mState.get() == STATE_CONNECTED) {
             return;
         }
         // Set the state to connecting.
-        if(mState.compareAndSet(STATE_DISCONNECTED, STATE_CONNECTING)) {
+        if (mState.compareAndSet(STATE_DISCONNECTED, STATE_CONNECTING)) {
             getHandler().obtainMessage(WHAT_CONNECTION_EVENT, ConnectionEvent.Connecting.ordinal(),
                     0).sendToTarget();
             // We need to keep a reference to mGatt right here so we can abort the connection
             // attempt if need be...
             setGATT(connectGatt(ctx, v1Device, mGattCallback));
             ESPLogger.d(LOG_TAG, "gatt connect called!");
-        }
-        else{
+        } else {
             // We were in the disconnected state while attempting to connect so force it to
             // DISCONNECTED and indicate the connection failed because we don't know why we weren't
             // in an expected state while connecting and the user should probably perform a
@@ -172,27 +167,24 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
      * Connect to GATT Server hosted by this device. Caller acts as GATT client. The callback is used to deliver results to Caller,
      * such as connection status as well as any further GATT client operations. The method returns a BluetoothGatt instance.
      * You can use BluetoothGatt to conduct GATT client operations.
-     *
+     * <p>
      * If the current device running API level is below 18 returns null.
      *
      * @param context
-     * @param callback  GATT callback respHandler that will receive asynchronous callbacks.
-     *
+     * @param callback GATT callback respHandler that will receive asynchronous callbacks.
+     * @return Returns a BluetoothGatt instance if an exception is not raised. Returns null if the current device's API level is below 18 (JELLY_BEAN_MR2).
      * @throws IllegalArgumentException if callback is null.
-     *
-     * @return  Returns a BluetoothGatt instance if an exception is not raised. Returns null if the current device's API level is below 18 (JELLY_BEAN_MR2).
      */
     private static BluetoothGatt connectGatt(Context context, BluetoothDevice device, BluetoothGattCallback callback) {
         // ADD OREO SUPPORT IN SOON
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // TODO: 8/25/2017 ADD OREO SUPPORT INTO THE LIBRARY
             return device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE, BluetoothDevice.PHY_LE_1M);
         }
         // Call the appropriate connGatt method based on the API level.
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             return device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE);
-        }
-        else {
+        } else {
             return device.connectGatt(context, false, callback);
         }
     }
@@ -203,9 +195,9 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         // BluetoothGatt object... we need to do this because calling disconnect before a connection
         // has been established doesn't guarantee onConnectionStateChange(BluetoothGatt, int int)
         // will be called thus allowing us to traditionally transition into the disconnected state.
-        if(mState.get() == STATE_CONNECTING) {
+        if (mState.get() == STATE_CONNECTING) {
             synchronized (this) {
-                if(mGatt != null) {
+                if (mGatt != null) {
                     mGatt.disconnect();
                     mGatt.close();
                 }
@@ -214,13 +206,12 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
             // Since the onConnectionStateChange won't be called, we must manually call
             // onDisconnected.
             onDisconnected(notifyDisconnect);
-        }
-        else {
+        } else {
             // The disconnect is asynchronous, so store the notify disconnect flag.
             mNotifyOnDisconnection = notifyDisconnect;
             // Call disconnect on the gatt object
             synchronized (this) {
-                if(mGatt != null) {
+                if (mGatt != null) {
                     mGatt.disconnect();
                 }
             }
@@ -241,11 +232,11 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
     /**
      * Attempts to enable/disable notifications on both locally and on a remote device for the specified
      * characteristic.
-     * @param gatt      Bluetooth connection to a remote device.
-     * @param charac    Characteristic on which to enable notifications
-     * @param enabled   True to enable notification
      *
-     * @return  True if the enable/disable notifications was initiated.
+     * @param gatt    Bluetooth connection to a remote device.
+     * @param charac  Characteristic on which to enable notifications
+     * @param enabled True to enable notification
+     * @return True if the enable/disable notifications was initiated.
      */
     protected boolean enableCharacteristicNotifications(BluetoothGatt gatt, BluetoothGattCharacteristic charac, boolean enabled) {
         // If the Gatt object or the desired characteristic to be enabled/disabled, is null return false.
@@ -276,13 +267,12 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
             gatt = mGatt;
             charac = mClientOut;
         }
-        if(gatt == null || charac == null) {
+        if (gatt == null || charac == null) {
             ESPLogger.d(LOG_TAG, String.format("write(byte[]) -> gatt == null : %b, charac == null : %b",
                     (gatt == null),
                     (charac == null)));
             return false;
-        }
-        else if(data == null) {
+        } else if (data == null) {
             ESPLogger.d(LOG_TAG, "write(byte[]) -> byte array == null");
             return false;
         }
@@ -302,16 +292,15 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
                 .append(")")
                 .toString());
 
-        if(status == BluetoothGatt.GATT_SUCCESS) {
-            if(newState == BluetoothProfile.STATE_CONNECTED) {
-                if(isConnecting()) {
+        if (status == BluetoothGatt.GATT_SUCCESS) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                if (isConnecting()) {
                     ESPLogger.d(LOG_TAG, "Bluetooth Gatt connected");
 
                     BluetoothGattService leService = gatt.getService(BTUtil.THEIA_UUID);
                     if (leService == null) {
                         ESPLogger.d(LOG_TAG, String.format("V1connection LE Service is null after connecting to %s", BTUtil.getFriendlyName(gatt.getDevice())));
-                    }
-                    else {
+                    } else {
                         ESPLogger.d(LOG_TAG, String.format("V1connection LE Service none-null after connecting to %s", BTUtil.getFriendlyName(gatt.getDevice())));
                     }
                     // Discovery the available services.
@@ -319,14 +308,13 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
                     // We are in the correct state, we now wanna discover the devices services.
                     ESPLogger.d(LOG_TAG, "Discovering BluetoothGatt services...");
                     // We need to set a serv. discovery timeout because randomly the API will never invoke onServiceDiscovery(...) preventing the app to complete the BT connection
-                    startServiceDiscoveryTimeout(gatt,8000);
+                    startServiceDiscoveryTimeout(gatt, 8000);
                     return;
                 }
                 ESPLogger.w(LOG_TAG, "Incorrect state: we weren't anticipating a connection, disconnecting.");
-            }
-            else if(newState == BluetoothProfile.STATE_DISCONNECTED) {
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 // Check to see if we were expecting the disconnecting state.
-                if(mState.get() == STATE_DISCONNECTING) {
+                if (mState.get() == STATE_DISCONNECTING) {
                     ESPLogger.d(LOG_TAG, "Successfully disconnected.");
                     gatt.close();
                     setGATT(null);
@@ -345,11 +333,10 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
 
         // If we made it to this point, and we're connecting, that means we've failed to establish
         // a successful connection.
-        if(isConnecting()) {
+        if (isConnecting()) {
             onConnectionFailed();
             return;
-        }
-        else if(isConnected()) {
+        } else if (isConnected()) {
             onConnectionLost();
             return;
         }
@@ -393,19 +380,18 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
                 .append(")")
                 .toString());
         // If the service discovery was successful, enable notifications for the V1-out, client-in characteristic.
-        if(status == BluetoothGatt.GATT_SUCCESS) {
+        if (status == BluetoothGatt.GATT_SUCCESS) {
             List<BluetoothGattService> l = gatt.getServices();
 
 
             // Make sure we were in the correct state when services were discovered.
-            if(mState.get() == STATE_CONNECTING) {
+            if (mState.get() == STATE_CONNECTING) {
                 discoveryESPGATTCharacteristics(gatt);
                 onConnected();
                 getHandler().obtainMessage(WHAT_CONNECTION_EVENT, ConnectionEvent.Connected.ordinal(),
                         0).sendToTarget();
             }
-        }
-        else {
+        } else {
             // If we failed to discover services while in the connecting state, disconnect because we aren't able to find the V1connectionWrapper LE service.
             if (mState.get() == STATE_CONNECTING) {
                 ESPLogger.d(LOG_TAG, "Failed to discover V1connection LE service.");
@@ -434,8 +420,8 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         // As of right now, the only descriptor write the V1connectionLEWrapper performs is enabling
         // notifications for the V1-out, client-in characteristic, during the connection process,
         // so if the status is successful,
-        if(descriptor.getCharacteristic().getUuid().equals(BTUtil.V1_OUT_CLIENT_IN_SHORT_CHARACTERISTIC_UUID)) {
-            if(status == BluetoothGatt.GATT_SUCCESS) {
+        if (descriptor.getCharacteristic().getUuid().equals(BTUtil.V1_OUT_CLIENT_IN_SHORT_CHARACTERISTIC_UUID)) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
                 onConnected();
                 return;
             }
@@ -453,8 +439,8 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         // Whenever, we receive this callback, we are able to to write again to the V1-in, client-out characteristic.
         setCanPerformBTWrite(true);
 
-        if(status != BluetoothGatt.GATT_SUCCESS) {
-            byte [] value = characteristic.getValue();
+        if (status != BluetoothGatt.GATT_SUCCESS) {
+            byte[] value = characteristic.getValue();
             ESPLogger.e(LOG_TAG, String.format("%s failed to write: %s", characteristic.getUuid().toString(), BTUtil.toHexString(value)));
 
             final ResponseHandler respHndlr = getResponseProcessor().removeResponseHandlerForData(value);
@@ -477,38 +463,36 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
     }
 
 
-    public void OnCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status)
-    {
+    public void OnCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
 
     }
 
     @Override
     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
         // Only process Characteristics on the V1-out, client-in short BTGatt characteristic.
-        if(characteristic.getUuid().equals(BTUtil.V1_OUT_CLIENT_IN_SHORT_CHARACTERISTIC_UUID)) {
-            byte [] data = characteristic.getValue();
+        if (characteristic.getUuid().equals(BTUtil.V1_OUT_CLIENT_IN_SHORT_CHARACTERISTIC_UUID)) {
+            byte[] data = characteristic.getValue();
             mBuffer.addAll(data);
             ESPPacket packet = PacketUtils.makeFromBufferLE(mFactory, mBuffer, mLastV1Type);
             // If the packet is null perform send a malformed data msg.
-            if(packet == null) {
+            if (packet == null) {
                 malformedData(data);
                 return;
             }
             // Ignore echo packets.
-            if(checkForEchos(packet)) {
+            if (checkForEchos(packet)) {
                 return;
             }
             // Perform ESP processing.
             processESPPacket(packet);
-        }
-        else {
+        } else {
             ESPLogger.d(LOG_TAG, "Unsupported characteristic. UUID: " + characteristic.getUuid().toString());
         }
     }
 
     @Override
     public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
-        if(status == BluetoothGatt.GATT_SUCCESS) {
+        if (status == BluetoothGatt.GATT_SUCCESS) {
             final BluetoothDevice device = gatt.getDevice();
             final RSSICallback cb;
             synchronized (this) {
@@ -519,15 +503,14 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
             if (cb != null) {
                 mHandler.post(() -> cb.onRssiReceived(device, rssi));
             }
-        }
-        else {
+        } else {
             ESPLogger.e(LOG_TAG, "Unable to read the remote device's RSSI");
         }
     }
 
     @Override
     public boolean readRemoteRSSI(RSSICallback callback) {
-        if(isConnected()) {
+        if (isConnected()) {
             synchronized (this) {
                 mPendingRSSICB = callback;
             }
@@ -536,5 +519,26 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         ESPLogger.d(LOG_TAG, "Not connected - unable to read remote RSSI!");
         return false;
     }
-    //endregion
+
+
+    public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+        if (status == 0) {
+            if (0 == characteristic.getUuid().compareTo(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b05020"))) {
+                String res = characteristic.getStringValue(0);
+                if (versionCallback != null)
+                    versionCallback.onDataReceived(res, null);
+                versionCallback = null;
+                return;
+            }
+
+            String res = characteristic.getStringValue(0);
+            ESPLogger.e("ONCharacteristic Read ", "onCharacteristicRead: " + res);
+            return;
+        } else {
+            ESPLogger.e("ONCHARREAD", "Got status = " + String.valueOf(status));
+        }
+    }
+
+    /* here we register all the callbacks from the client */
+
 }
