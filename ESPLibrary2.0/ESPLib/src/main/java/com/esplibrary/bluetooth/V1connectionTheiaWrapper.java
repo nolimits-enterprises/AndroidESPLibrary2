@@ -21,6 +21,7 @@ import com.esplibrary.client.ESPRequest;
 import com.esplibrary.client.ResponseHandler;
 import com.esplibrary.client.callbacks.NoDataListener;
 import com.esplibrary.packets.ESPPacket;
+import com.esplibrary.packets.InfDisplayDataFactory;
 import com.esplibrary.packets.PacketFactory;
 import com.esplibrary.packets.PacketUtils;
 import com.esplibrary.utilities.ESPLogger;
@@ -521,13 +522,18 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
     }
 
 
+    boolean t = false;
     public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+        t = !t;
         if (status == 0) {
             if (0 == characteristic.getUuid().compareTo(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b05020"))) {
                 String res = characteristic.getStringValue(0);
                 if (versionCallback != null)
                     versionCallback.onDataReceived(res, null);
                 versionCallback = null;
+                InfDisplayDataFactory f = new InfDisplayDataFactory();
+                f.setFront(t);
+                mListener.onDisplayDataReceived(f.getInfDisplayData());
                 return;
             }
 
