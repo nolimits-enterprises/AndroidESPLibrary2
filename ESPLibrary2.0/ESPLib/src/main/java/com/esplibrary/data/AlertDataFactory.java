@@ -68,4 +68,9 @@ public class AlertDataFactory {
             d[i] = 0;
     }
 
+    public AlertData getAlertData()
+    {
+        return new AlertData(d, 0, 7);
+    }
+
 }

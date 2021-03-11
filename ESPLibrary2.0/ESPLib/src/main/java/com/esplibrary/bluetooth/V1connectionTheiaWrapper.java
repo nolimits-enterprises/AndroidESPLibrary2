@@ -12,6 +12,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.util.JsonReader;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -20,12 +21,16 @@ import com.esplibrary.client.ESPClientListener;
 import com.esplibrary.client.ESPRequest;
 import com.esplibrary.client.ResponseHandler;
 import com.esplibrary.client.callbacks.NoDataListener;
+import com.esplibrary.data.AlertBand;
+import com.esplibrary.data.AlertDataFactory;
 import com.esplibrary.packets.ESPPacket;
 import com.esplibrary.packets.InfDisplayDataFactory;
 import com.esplibrary.packets.PacketFactory;
 import com.esplibrary.packets.PacketUtils;
 import com.esplibrary.utilities.ESPLogger;
 import com.esplibrary.client.callbacks.ESPRequestedDataListener;
+
+import org.json.JSONObject;
 
 import java.time.Clock;
 import java.util.List;
@@ -407,6 +412,10 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         //BluetoothGattCharacteristic v1OutClientIn = service.getCharacteristic(BTUtil.V1_OUT_CLIENT_IN_SHORT_CHARACTERISTIC_UUID);
         ESPLogger.d(LOG_TAG, "Enabling notifications for V1-Out/Client-In short BluetoothGattCharacteristic...");
         //enableCharacteristicNotifications(gatt, v1OutClientIn, true);
+        BluetoothGattService l = gatt.getService(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b0501a"));
+        BluetoothGattCharacteristic c = l.getCharacteristic(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b05022"));
+        gatt.setCharacteristicNotification(c, true);
+        //enableCharacteristicNotifications(gatt, c, true);
     }
 
     @Override
@@ -486,7 +495,55 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
             }
             // Perform ESP processing.
             processESPPacket(packet);
-        } else {
+        } else if (characteristic.getUuid().equals(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b05022")))
+        {
+            String display = characteristic.getStringValue(0);
+            try {
+                JSONObject jo = new JSONObject(display);
+                int type = jo.getInt("alert_class");
+
+                InfDisplayDataFactory f = new InfDisplayDataFactory();
+
+
+
+                if (type == 6) {
+                    mListener.onDisplayDataReceived(f.getInfDisplayData());
+                    return;
+                }
+
+                int band = jo.getInt("band");
+
+                f.setFront(true);
+
+                AlertDataFactory alertFactory = new AlertDataFactory();
+                switch (band)
+                {
+                    case 0:
+                        f.setX(true);
+                        alertFactory.setBand(AlertBand.X);
+                        break;
+                    case 1:
+                        f.setK(true);
+                        alertFactory.setBand(AlertBand.K);
+                        break;
+                    case 2:
+                        f.setKa(true);
+                        alertFactory.setBand(AlertBand.Ka);
+                        break;
+                    default:
+                        break;
+
+                }
+
+                mListener.onDisplayDataReceived(f.getInfDisplayData());
+
+            }
+            catch (Exception e)
+            {
+
+            }
+        }
+        else {
             ESPLogger.d(LOG_TAG, "Unsupported characteristic. UUID: " + characteristic.getUuid().toString());
         }
     }
