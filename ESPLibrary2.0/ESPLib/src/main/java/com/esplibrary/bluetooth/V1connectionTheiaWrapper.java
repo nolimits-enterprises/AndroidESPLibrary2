@@ -407,15 +407,14 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
     }
 
     protected void discoveryESPGATTCharacteristics(BluetoothGatt gatt) {
-        BluetoothGattService service = gatt.getService(BTUtil.V1CONNECTION_LE_SERVICE_UUID);
         //mClientOut = service.getCharacteristic(BTUtil.CLIENT_OUT_V1_IN_SHORT_CHARACTERISTIC_UUID);
         //BluetoothGattCharacteristic v1OutClientIn = service.getCharacteristic(BTUtil.V1_OUT_CLIENT_IN_SHORT_CHARACTERISTIC_UUID);
         ESPLogger.d(LOG_TAG, "Enabling notifications for V1-Out/Client-In short BluetoothGattCharacteristic...");
         //enableCharacteristicNotifications(gatt, v1OutClientIn, true);
         BluetoothGattService l = gatt.getService(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b0501a"));
         BluetoothGattCharacteristic c = l.getCharacteristic(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b05022"));
-        gatt.setCharacteristicNotification(c, true);
-        //enableCharacteristicNotifications(gatt, c, true);
+        //gatt.setCharacteristicNotification(c, true);
+        enableCharacteristicNotifications(gatt, c, true);
     }
 
     @Override
