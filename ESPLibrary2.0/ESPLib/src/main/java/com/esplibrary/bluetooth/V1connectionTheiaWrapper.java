@@ -47,6 +47,53 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         versionCallback = c;
     }
 
+    class keepAliveThread extends Thread
+    {
+        boolean enabled;
+        BluetoothGatt mGatt;
+
+        public void setEnabled(boolean e)
+        {
+            enabled = e;
+        }
+
+        public void setGatt(BluetoothGatt b)
+        {
+            mGatt = b;
+        }
+
+        public keepAliveThread()
+        {
+            mGatt = null
+        }
+
+        public keepAliveThread(BluetoothGatt b)
+        {
+            mGatt = b;
+        }
+
+        public void run()
+        {
+            while(true) {
+                try {
+                    // we should write something to keep alive, otherwise Theia will not consider bluetooth active
+                    // so we just send an invalid setting string to keep alive
+                    Thread.sleep(300);
+                    if (mGatt != null) {
+                        BluetoothGattService s = mGatt.getService(UUID.fromString(TheiaUtil.UUID_STR_SERVICE));
+                        BluetoothGattCharacteristic c = s.getCharacteristic(UUID.fromString(TheiaUtil.UUID_STR_SETTING));
+                        c.setValue("");
+                        mGatt.writeCharacteristic(c);
+                    }
+                } catch (Exception e) {
+                    return;
+                }
+            }
+        }
+    }
+
+    keepAliveThread mKeep;
+
 
     public class TheiaGattCallback extends BluetoothGattCallback {
         private V1connectionTheiaWrapper w;
@@ -123,6 +170,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         mHandler = new Handler();
         mCanWrite.set(false);
         mListener = listener;
+        mKeep = new keepAliveThread();
     }
 
     @Override
@@ -204,6 +252,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         if (mState.get() == STATE_CONNECTING) {
             synchronized (this) {
                 if (mGatt != null) {
+                    mKeep.setGatt(null);
                     mGatt.disconnect();
                     mGatt.close();
                 }
@@ -218,6 +267,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
             // Call disconnect on the gatt object
             synchronized (this) {
                 if (mGatt != null) {
+                    mKeep.setGatt(null);
                     mGatt.disconnect();
                 }
             }
@@ -354,6 +404,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
     protected void setGATT(BluetoothGatt gatt) {
         synchronized (this) {
             mGatt = gatt;
+            mKeep.setGatt(gatt);
         }
     }
 

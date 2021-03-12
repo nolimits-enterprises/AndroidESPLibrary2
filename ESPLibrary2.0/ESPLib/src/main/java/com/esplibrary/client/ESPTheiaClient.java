@@ -76,6 +76,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class ESPTheiaClient implements IESPClient {
 
+    boolean enableAlerts;
+
     private final static String LOG_TAG = "ESPTheiaClient";
 
     /**
@@ -91,6 +93,7 @@ public class ESPTheiaClient implements IESPClient {
     private final Context mAppCtx;
 
     public ESPTheiaClient(Context appContext, V1connectionTheiaWrapper connection) {
+        enableAlerts = true;
         mConnection = connection;
         mTheiaConnection = connection;
         mAppCtx = appContext.getApplicationContext();
@@ -411,6 +414,8 @@ public class ESPTheiaClient implements IESPClient {
 
     @Override
     public void requestBatteryVoltage(ESPRequestedDataListener<String> callback) {
+        // just report a faux voltage
+        callback.onDataReceived("12.9", null);
     }
 
     @SuppressLint("DefaultLocale")
@@ -475,6 +480,8 @@ public class ESPTheiaClient implements IESPClient {
 
     @Override
     public void requestStartAlertData(ESPRequestListener callback) {
+        enableAlerts = true;
+        callback.onRequestCompleted(null);
     }
 
     @Override
@@ -494,6 +501,8 @@ public class ESPTheiaClient implements IESPClient {
      * @param sendNext Indicates if the stop at data request should be send next
      */
     private void stopAlertData(ESPRequestListener callback, boolean sendNext) {
+        enableAlerts = false;
+        callback.onRequestCompleted(null);
     }
 
     @Override
