@@ -411,8 +411,8 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
         //BluetoothGattCharacteristic v1OutClientIn = service.getCharacteristic(BTUtil.V1_OUT_CLIENT_IN_SHORT_CHARACTERISTIC_UUID);
         ESPLogger.d(LOG_TAG, "Enabling notifications for V1-Out/Client-In short BluetoothGattCharacteristic...");
         //enableCharacteristicNotifications(gatt, v1OutClientIn, true);
-        BluetoothGattService l = gatt.getService(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b0501a"));
-        BluetoothGattCharacteristic c = l.getCharacteristic(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b05022"));
+        BluetoothGattService l = gatt.getService(UUID.fromString(TheiaUtil.UUID_STR_SERVICE));
+        BluetoothGattCharacteristic c = l.getCharacteristic(UUID.fromString(TheiaUtil.UUID_STR_DISPLAY));
         //gatt.setCharacteristicNotification(c, true);
         enableCharacteristicNotifications(gatt, c, true);
     }
@@ -494,7 +494,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
             }
             // Perform ESP processing.
             processESPPacket(packet);
-        } else if (characteristic.getUuid().equals(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b05022")))
+        } else if (characteristic.getUuid().equals(UUID.fromString(TheiaUtil.UUID_STR_DISPLAY)))
         {
             String display = characteristic.getStringValue(0);
             try {
@@ -505,36 +505,60 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
 
 
 
-                if (type == 6) {
+                if (type == TheiaUtil.ALERT_CLASS_NONE) {
                     mListener.onDisplayDataReceived(f.getInfDisplayData());
                     return;
                 }
 
-                int band = jo.getInt("band");
-
-                f.setFront(true);
-
-                AlertDataFactory alertFactory = new AlertDataFactory();
-                switch (band)
+                if (type == TheiaUtil.ALERT_CLASS_LASER)
                 {
-                    case 0:
-                        f.setX(true);
-                        alertFactory.setBand(AlertBand.X);
-                        break;
-                    case 1:
-                        f.setK(true);
-                        alertFactory.setBand(AlertBand.K);
-                        break;
-                    case 2:
-                        f.setKa(true);
-                        alertFactory.setBand(AlertBand.Ka);
-                        break;
-                    default:
-                        break;
-
+                    f.setLaser(true);
+                    mListener.onDisplayDataReceived(f.getInfDisplayData());
+                    return;
                 }
+                else if (type == TheiaUtil.ALERT_CLASS_RADAR) {
 
-                mListener.onDisplayDataReceived(f.getInfDisplayData());
+                    int dir = jo.getInt("dir");
+                    double intensity = jo.getDouble("intensity");
+                    int band = jo.getInt("band");
+                    double freq = jo.getDouble("frequency");
+
+                    AlertDataFactory alertFactory = new AlertDataFactory();
+                    alertFactory.setFrequency((int)freq);
+
+                    switch(dir)
+                    {
+                        case TheiaUtil.ALERT_DIR_FRONT:
+                            f.setFront(true);
+                            break;
+                        case TheiaUtil.ALERT_DIR_SIDE:
+                            f.setSide(true);
+                            break;
+                        case TheiaUtil.ALERT_DIR_REAR:
+                            f.setRear(true);
+                            break;
+                    }
+
+                    switch (band) {
+                        case TheiaUtil.ALERT_BAND_X:
+                            f.setX(true);
+                            alertFactory.setBand(AlertBand.X);
+                            break;
+                        case TheiaUtil.ALERT_BAND_K:
+                            f.setK(true);
+                            alertFactory.setBand(AlertBand.K);
+                            break;
+                        case TheiaUtil.ALERT_BAND_KA:
+                            f.setKa(true);
+                            alertFactory.setBand(AlertBand.Ka);
+                            break;
+                        default:
+                            break;
+
+                    }
+
+                    mListener.onDisplayDataReceived(f.getInfDisplayData());
+                }
 
             }
             catch (Exception e)
@@ -582,7 +606,7 @@ public class V1connectionTheiaWrapper extends V1connectionBaseWrapper implements
     public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
         t = !t;
         if (status == 0) {
-            if (0 == characteristic.getUuid().compareTo(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b05020"))) {
+            if (0 == characteristic.getUuid().compareTo(UUID.fromString(TheiaUtil.UUID_STR_GPS))) {
                 String res = characteristic.getStringValue(0);
                 if (versionCallback != null)
                     versionCallback.onDataReceived(res, null);
