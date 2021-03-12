@@ -142,7 +142,7 @@ public class BluetoothScanner extends BroadcastReceiver implements IScanner {
             // Creates a scanFilter Builder for the Theia LE UUID.
             //ScanFilter.Builder filterBuilder = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(BTUtil.V1CONNECTION_LE_SERVICE_UUID));
             ParcelUuid id = new ParcelUuid(BTUtil.THEIA_UUID);
-            ScanFilter.Builder filterBuilder = new ScanFilter.Builder().setDeviceName("Gobbledegook");
+            ScanFilter.Builder filterBuilder = new ScanFilter.Builder().setDeviceName("Theia");
             filters.add(filterBuilder.build());
             if (mTheiaScanCB == null) {
                 mTheiaScanCB = new V1cTheiaScanCallback();

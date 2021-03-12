@@ -14,6 +14,7 @@ import com.esplibrary.bluetooth.ConnectionListener;
 import com.esplibrary.bluetooth.ConnectionType;
 import com.esplibrary.bluetooth.IV1connectionWrapper;
 import com.esplibrary.bluetooth.RSSICallback;
+import com.esplibrary.bluetooth.TheiaUtil;
 import com.esplibrary.bluetooth.V1connectionTheiaWrapper;
 import com.esplibrary.client.callbacks.ESPRequestListener;
 import com.esplibrary.client.callbacks.ESPRequestedDataListener;
@@ -303,13 +304,13 @@ public class ESPTheiaClient implements IESPClient {
     //region ESP Data Request methods
     @Override
     public void requestVersion(DeviceId deviceID, ESPRequestedDataListener<String> callback) {
-        BluetoothGattService l = mTheiaConnection.getGatt().getService(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b0501a"));
+        BluetoothGattService l = mTheiaConnection.getGatt().getService(UUID.fromString(TheiaUtil.UUID_STR_SERVICE));
         if(null == l)
         {
             ESPLogger.e("charTest", "Failed to get Service");
             return;
         }
-        BluetoothGattCharacteristic c = l.getCharacteristic(UUID.fromString("8a7eeeb6-36e8-420e-bcbd-fb59e7b05020"));
+        BluetoothGattCharacteristic c = l.getCharacteristic(UUID.fromString(TheiaUtil.UUID_STR_GPS));
         if(null == l)
         {
             ESPLogger.e("charTest", "Failed to get characeteristic");
@@ -419,6 +420,28 @@ public class ESPTheiaClient implements IESPClient {
 
     @Override
     public void requestMute(final boolean mute, ESPRequestListener callback) {
+        BluetoothGattService l = mTheiaConnection.getGatt().getService(UUID.fromString(TheiaUtil.UUID_STR_SERVICE));
+        if(null == l)
+        {
+            ESPLogger.e("charTest", "Failed to get Service");
+            return;
+        }
+        BluetoothGattCharacteristic c = l.getCharacteristic(UUID.fromString(TheiaUtil.UUID_STR_MUTE_REQ));
+        if(null == l)
+        {
+            ESPLogger.e("charTest", "Failed to get characeteristic");
+            return;
+        }
+
+        c.setValue(mute ? "1" : "0");
+
+        if (false == mTheiaConnection.getGatt().writeCharacteristic(c))
+        {
+            callback.onRequestCompleted("Failed to write");
+        }
+
+        callback.onRequestCompleted(null);
+
     }
 
     @Override
@@ -427,6 +450,27 @@ public class ESPTheiaClient implements IESPClient {
 
     @Override
     public void requestDisplayOn(final boolean on, ESPRequestListener callback) {
+        BluetoothGattService l = mTheiaConnection.getGatt().getService(UUID.fromString(TheiaUtil.UUID_STR_SERVICE));
+        if(null == l)
+        {
+            ESPLogger.e("charTest", "Failed to get Service");
+            return;
+        }
+        BluetoothGattCharacteristic c = l.getCharacteristic(UUID.fromString(TheiaUtil.UUID_STR_DISPLAY_REQ));
+        if(null == l)
+        {
+            ESPLogger.e("charTest", "Failed to get characeteristic");
+            return;
+        }
+
+        c.setValue(on ? "1" : "0");
+
+        if (false == mTheiaConnection.getGatt().writeCharacteristic(c))
+        {
+            callback.onRequestCompleted("Failed to write");
+        }
+
+        callback.onRequestCompleted(null);
     }
 
     @Override
